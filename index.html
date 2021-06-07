@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.15.1/dist/phaser.min.js"></script>
+    <script src="localforage.js"></script>
+  </head>
+  <body>
+    <script>
+      class myBullet extends Phaser.GameObjects.Sprite {
+        constructor(scene, x, y) {
+          super(scene, x, y);
+          this.setTexture("bullet");
+          this.setPosition(x, y);
+        }
+        preUpdate(time, delta) {
+          super.preUpdate(time, delta);
+          this.x = this.x + 8;
+          if (this.x > 800) {
+            this.destroy();
+          }
+          if (gameState != 0) {
+            this.destroy();
+          }
+
+          for (var i = enemies.getChildren().length - 1; i > -1; i--) {
+            var enm = enemies.getChildren()[i];
+
+            var centerX = this.x + 16;
+            var centerY = this.y + 16;
+            if (enm.x <= centerX && enm.x + 64 >= centerX) {
+              if (enm.y <= centerY && enm.y + 32 >= centerY) {
+                score = score + 1;
+                enm.destroy();
+                this.destroy();
+              }
+            }
+          }
+        }
+      }
+
+      class sakanaEnemy extends Phaser.GameObjects.Sprite {
+        constructor(scene, x, y) {
+          super(scene, x, y);
+          this.setTexture("enemy");
+          this.setPosition(x, y);
+        }
+        preUpdate(time, delta) {
+          super.preUpdate(time, delta);
+          this.x = this.x - enemySpeed;
+          var y = Math.floor(Math.random() * 10) - 5;
+          this.y = this.y + y;
+          if (this.y < 50) {
+            this.y = 50;
+          } else if (this.y > 600) {
+            this.y = 600;
+          }
+          if (this.x < 10) {
+            life = life - 1;
+            this.destroy();
+          }
+        }
+      }
+
+      class titleScene extends Phaser.Scene {
+        constructor() {
+          super({ key: "titleScene", active: true });
+        }
+
+        create() {
+          let text = this.add
+            .text(100, 100, "Shooting Game")
+            .setFontSize(64)
+            .setColor("#ff0");
+
+          let txtHiScore = this.add
+            .text(100, 400, "Hi-Score :")
+            .setFontSize(32)
+            .setColor("#0");
+
+          localforage.getItem("hiscore", function (err, value) {
+            var score1 = 0;
+            if (value != null) {
+              score1 = value;
+            }
+            hiScore = score1;
+            txtHiScore.text = "Hi-Score :" + score1;
+
+            // if err is non-null, we got an error. otherwise, value is the value
+          });
+
+          let clickButton = this.add.text(200, 300, "START TO CLICK", {
+            fill: "#0f0"
+          });
+          clickButton.setStroke("#0000ff", 4);
+          clickButton.setFontSize("40px");
+          clickButton.setInteractive();
+          clickButton.on("pointerdown", () => {
+            this.scene.start("MyScene1");
+          });
+        }
+      }
+
+      class MyScene1 extends Phaser.Scene {
+        constructor() {
+          //Sceneを拡張してクラスを作る際にコンストラクタでSceneの設定を渡します
+          //keyでシーンのキー、activeでシーンの自動実行を設定できます
+          super({ key: "MyScene1", active: false });
+        }
+        preload() {
+          this.load.image("bg001", "./bg.jpg");
+          this.load.image("bg002", "./sea2_background.png");
+          this.load.image("sakana", "./mychara.png");
+          this.load.image("bullet", "./bullet.png");
+          this.load.image("enemy", "./enemy.png");
+        }
+        create() {
+          bg001 = this.add.tileSprite(400, 300, 800, 600, "bg001");
+          bg002 = this.add.tileSprite(400, 300, 800, 600, "bg002");
+          myChara = this.add.sprite(100, 100, "sakana").setInteractive();
+          input = this.input;
+
+          txtLife = this.add
+            .text(100, 10, "Life:" + life)
+            .setFontSize("20px")
+            .setStroke("#ff0000", 2)
+            .setColor("#ff0000");
+
+          txtScore = this.add
+            .text(300, 10, "Score:" + score)
+            .setFontSize("20px")
+            .setStroke("#ffff00", 2)
+            .setColor("#000000");
+
+          txtEvt = this.add.text(100, 300, "", { fill: "#ffffff" });
+          txtEvt.setStroke("#0000ff", 4);
+          txtEvt.setFontSize("64px");
+
+          myChara.on("pointerdown", function (pointer) {
+            console.log("click");
+            //this.add.existing(new myBullet(this, input.x, input.y));
+            onBullet = true;
+          });
+
+          enemies = this.add.group();
+          this.bullets = this.add.group();
+        }
+        update() {
+          if (gameState == 0) {
+            bg001.tilePositionX += 4.0;
+            bg002.tilePositionX += 0.5;
+
+            txtLife.text = "Life:" + life;
+            txtScore.text = "Score:" + score;
+
+            myChara.x = input.x;
+            myChara.y = input.y;
+            if (onBullet == true) {
+              onBullet = false;
+              var blt = new myBullet(this, input.x, input.y);
+              this.bullets.add(blt);
+              this.add.existing(blt);
+            }
+            cntTimer = cntTimer + 1;
+            if (cntTimer > 40) {
+              enemySpeed = enemySpeed + 0.1;
+              cntTimer = 0;
+              var y = Math.floor(Math.random() * 450) + 50;
+
+              var enm = new sakanaEnemy(this, 800, y);
+              enemies.add(enm);
+              this.add.existing(enm);
+            }
+            if (life <= 0) {
+              gameState = 1; //game over
+              if (hiScore <= score) {
+                hiScore = score;
+                localforage.setItem("hiscore", hiScore);
+                txtEvt.text = "YOUR Hi-SCORE!!";
+              } else {
+                txtEvt.text = "GAME OVER..";
+              }
+            }
+          }
+        }
+      }
+      var config = {
+        type: Phaser.AUTO,
+        width: 800,
+        height: 600,
+        backgroundColor: "#4488aa",
+        audio: { disableWebAudio: true },
+        scene: [titleScene, MyScene1]
+      };
+      var game = new Phaser.Game(config);
+      var bg001, bg002;
+      var txtScore, txtLife, txtEvt;
+      var myChara;
+      var input;
+      var life = 5;
+      var hiScore = 0;
+      var score = 0;
+      var cntTimer = 0;
+      var gameState = 0;
+      var enemySpeed = 2;
+      var onBullet = false;
+      var enemies;
+    </script>
+  </body>
+</html>
