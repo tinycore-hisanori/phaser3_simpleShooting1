@@ -33,7 +33,9 @@ Phaser3.jsを使ってHTML5のゲームを作るときに参考にしてもら�
 * Phase3.js - 3.55.2
 * [LocalForage.js](https://localforage.github.io/localForage/)
  
+# Note
 
+ * 楽曲提供 [魔王魂](https://maou.audio/)
  
 
  
